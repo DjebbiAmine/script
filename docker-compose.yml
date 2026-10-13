@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+
+  script:
+    image: synergy-call-center:latest
+    container_name: synergy-call-center
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    expose:
+      - "3000"
+    networks:
+      - sy-network
+    volumes:
+      # Local fallback store (db.json) persisted on the host.
+      - ./db.json:/app/db.json
+
+
+
+networks:
+  sy-network:
+    name: sy-network
