@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLiveUpdates } from '../lib/useLiveUpdates';
 import { Association, ScriptSequence, Consigne } from '../types';
 import { 
@@ -28,6 +28,29 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
   
   const [activeSequence, setActiveSequence] = useState<ScriptSequence | null>(null);
   const [activeObjection, setActiveObjection] = useState<ScriptSequence | null>(null);
+  // The steps list shows at most 5 steps (whatever their wrapped height) and scrolls beyond that.
+  const stepsListRef = useRef<HTMLDivElement>(null);
+  const [stepsMaxHeight, setStepsMaxHeight] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const list = stepsListRef.current;
+    if (!list) return;
+    const measure = () => {
+      const items: HTMLElement[] = [];
+      list.querySelectorAll<HTMLElement>(':scope > button').forEach(b => items.push(b));
+      if (items.length <= 5) {
+        setStepsMaxHeight(undefined);
+        return;
+      }
+      const fifth = items[4];
+      setStepsMaxHeight(fifth.offsetTop - items[0].offsetTop + fifth.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    list.querySelectorAll('button').forEach(b => observer.observe(b));
+    return () => observer.disconnect();
+  }, [sequences]);
+
   const [note, setNote] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -602,7 +625,11 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
               Flux d'appel principal
             </h2>
             
-            <div className="space-y-2">
+            <div
+              ref={stepsListRef}
+              className="space-y-2 overflow-y-auto overscroll-contain pr-1 -mr-1"
+              style={stepsMaxHeight ? { maxHeight: stepsMaxHeight } : undefined}
+            >
               {mainScripts.map((seq, index) => {
                 const isActive = activeSequence?.id === seq.id;
                 return (
@@ -612,20 +639,20 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
                       setActiveSequence(seq);
                       setActiveObjection(null); // Clear temporary objection when switching steps
                     }}
-                    className={`w-full text-left p-3.5 rounded-lg border transition-all flex items-center justify-between text-sm cursor-pointer ${
+                    className={`w-full text-left p-3.5 rounded-lg border transition-all flex items-center justify-between gap-2 text-sm cursor-pointer ${
                       isActive 
                         ? 'bg-slate-900 text-white border-slate-900 font-semibold shadow-sm'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-705 border-slate-200'
                     }`}
                     id={`seq-btn-${seq.id}`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs ${
                         isActive ? 'bg-teal-500 text-slate-950 font-bold' : 'bg-slate-200 text-slate-600'
                       }`}>
                         {index + 1}
                       </span>
-                      <span className="truncate">{seq.titre_sequence}</span>
+                      <span className="min-w-0 break-words leading-snug">{seq.titre_sequence}</span>
                     </div>
                     <ChevronRight className="w-4 h-4 shrink-0" />
                   </button>
