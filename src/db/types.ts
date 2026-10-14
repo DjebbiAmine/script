@@ -1,7 +1,5 @@
 import { Association, ScriptSequence, AgentNote, Consigne } from '../types';
 
-export type BackendName = 'postgres' | 'firestore' | 'local';
-
 export interface CallCenterDB {
   associations: Association[];
   sequences: ScriptSequence[];
@@ -18,7 +16,6 @@ export interface StoreCounts {
 
 // Common contract implemented by every persistence backend.
 export interface DataStore {
-  readonly name: BackendName;
   // Verifies connectivity (and creates the schema where relevant). Throws on failure.
   init(): Promise<void>;
 

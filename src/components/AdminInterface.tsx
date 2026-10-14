@@ -57,7 +57,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   // Selector for workspace lists
   const [selectedCampaignDropdown, setSelectedCampaignDropdown] = useState(false);
 
-  // Global error trackers & Toast Notifications for Firestore
+  // Global error trackers & Toast Notifications
   interface CustomToast {
     id: string;
     type: 'success' | 'error' | 'info' | 'warning';
@@ -525,7 +525,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-400 text-xs font-semibold">
             <Server className="w-3.5 h-3.5 text-slate-500" />
-            <span>Stockage local actif (Fichier db.json)</span>
+            <span>Stockage : PostgreSQL</span>
           </div>
         </div>
 
@@ -565,7 +565,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
         >
           <Database className="w-3.5 h-3.5" />
           <span>Synchronisation & Diagnostic</span>
-          {syncStatus && syncStatus.activeBackend !== 'local' && (
+          {syncStatus && syncStatus.connected && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           )}
         </button>
@@ -586,7 +586,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                     <span>SYNCHRONISATION ET DIAGNOSTIC BASE DE DONNÉES</span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Vérifiez en temps réel l'état de la connexion de votre application avec PostgreSQL (base principale), Cloud Firestore (secours) et la sauvegarde locale.
+                    Vérifiez en temps réel l'état de la connexion de votre application avec PostgreSQL.
                   </p>
                 </div>
                 
@@ -620,40 +620,19 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
               ) : syncStatus ? (
                 <div className="space-y-6">
                   {/* Status Banner */}
-                  {syncStatus.activeBackend === 'postgres' ? (
+                  {syncStatus.connected ? (
                     <div className="bg-emerald-50 border border-emerald-150 rounded-lg p-4 flex items-start gap-3.5">
                       <div className="bg-emerald-500 rounded-full p-1.5 text-white animate-pulse">
                         <Wifi className="w-4 h-4" />
                       </div>
                       <div className="flex-1">
                         <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
-                          <span>CONNECTÉ À POSTGRESQL (BASE PRINCIPALE)</span>
+                          <span>CONNECTÉ À POSTGRESQL</span>
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block"></span>
                         </h4>
                         <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
-                          La base de données <strong>PostgreSQL</strong> est connectée. Toutes les modifications apportées aux campagnes, scripts, objections et notes d'agents y sont enregistrées, avec une copie de secours dans <code>db.json</code>.
+                          La base de données <strong>PostgreSQL</strong> est connectée. Toutes les modifications apportées aux campagnes, scripts, objections et notes d'agents y sont enregistrées.
                         </p>
-                      </div>
-                    </div>
-                  ) : syncStatus.activeBackend === 'firestore' ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3.5">
-                      <div className="bg-amber-500 rounded-full p-1.5 text-white">
-                        <AlertTriangle className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider">
-                          POSTGRESQL INDISPONIBLE — BASCULE SUR FIRESTORE
-                        </h4>
-                        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                          {syncStatus.postgres.configured
-                            ? "La connexion à PostgreSQL a échoué. L'application utilise temporairement Cloud Firestore et réessaiera PostgreSQL automatiquement."
-                            : "PostgreSQL n'est pas configuré (DATABASE_URL ou SQL_HOST/SQL_DB_NAME). L'application utilise Cloud Firestore."}
-                        </p>
-                        {syncStatus.postgres.error && (
-                          <div className="mt-2 text-[11px] font-mono bg-amber-100/50 text-amber-800 p-2 rounded border border-amber-200 max-h-24 overflow-y-auto">
-                            {syncStatus.postgres.error}
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : (
@@ -663,65 +642,36 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                       </div>
                       <div className="flex-1">
                         <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider">
-                          MODE SAUVEGARDE LOCALE ACTIVE (AUCUNE BASE DISTANTE)
+                          POSTGRESQL INJOIGNABLE — L'APPLICATION NE PEUT PAS FONCTIONNER
                         </h4>
                         <p className="text-xs text-red-700 mt-1 leading-relaxed font-normal">
-                          Ni PostgreSQL ni Firestore ne sont joignables. Vos données sont conservées sur le serveur dans le fichier local (<code>db.json</code>) et seront recopiées dans PostgreSQL dès qu'une base vide sera disponible.
+                          Aucune base de secours n'est utilisée. Les modifications et lectures échoueront tant que la connexion à PostgreSQL n'est pas rétablie.
                         </p>
-                        {[syncStatus.postgres.error, syncStatus.firestore.error || syncStatus.firestore.reason].filter(Boolean).map((msg: string, i: number) => (
-                          <div key={i} className="mt-2 text-[11px] font-mono bg-red-100/50 text-red-800 p-2 rounded border border-red-200 max-h-24 overflow-y-auto">
-                            {msg}
+                        {syncStatus.error && (
+                          <div className="mt-2 text-[11px] font-mono bg-red-100/50 text-red-800 p-2 rounded border border-red-200 max-h-24 overflow-y-auto">
+                            {syncStatus.error}
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* SIDE BY SIDE METRICS COMPARE GRID */}
+                  {/* Row counts */}
                   <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Statistiques de comparaison des données</h4>
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Données stockées</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {([
                         ['associations', 'Associations / Campagnes'],
                         ['sequences', "Scripts d'appels & Séquences"],
                         ['notes', 'Commentaires & Notes Agents'],
-                      ] as const).map(([key, label]) => {
-                        const remoteCounts = syncStatus.activeBackend === 'postgres'
-                          ? syncStatus.postgres.counts
-                          : syncStatus.activeBackend === 'firestore' ? syncStatus.firestore.counts : null;
-                        const localCount = syncStatus.local.counts[key];
-                        return (
-                          <div key={key} className="bg-slate-50 border border-slate-150 rounded-xl p-4 flex flex-col justify-between">
-                            <div>
-                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</div>
-                              <div className="mt-2 grid grid-cols-2 gap-2 text-center">
-                                <div className="border-r border-slate-200/60 pb-1">
-                                  <span className="block text-lg font-extrabold text-slate-800">{localCount}</span>
-                                  <span className="text-[9px] text-slate-500 uppercase">Sauvegardes</span>
-                                </div>
-                                <div>
-                                  <span className="block text-lg font-extrabold text-slate-800">
-                                    {remoteCounts ? remoteCounts[key] : 'N/A'}
-                                  </span>
-                                  <span className="text-[9px] text-slate-500 uppercase">
-                                    {syncStatus.activeBackend === 'firestore' ? 'Firestore' : 'PostgreSQL'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="mt-3 pt-2.5 border-t border-slate-200/50 flex justify-between items-center text-[10px]">
-                              <span className="text-slate-400 font-medium">État :</span>
-                              {!remoteCounts ? (
-                                <span className="px-1.5 py-0.5 rounded text-amber-800 font-bold uppercase bg-amber-100">Hors Ligne</span>
-                              ) : localCount === remoteCounts[key] ? (
-                                <span className="px-1.5 py-0.5 rounded text-emerald-800 font-bold uppercase bg-emerald-100">Parfait</span>
-                              ) : (
-                                <span className="px-1.5 py-0.5 rounded text-blue-800 font-bold uppercase bg-blue-100">Écart</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      ] as const).map(([key, label]) => (
+                        <div key={key} className="bg-slate-50 border border-slate-150 rounded-xl p-4 text-center">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</div>
+                          <span className="block mt-2 text-lg font-extrabold text-slate-800">
+                            {syncStatus.counts ? syncStatus.counts[key] : 'N/A'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -732,33 +682,9 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                       <span>CONFIGURATION SYSTÈME</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Stockage actif :</span>
-                      <span className="font-semibold text-slate-800">{syncStatus.activeStorage}</span>
+                      <span className="text-slate-400">PostgreSQL :</span>
+                      <span className="font-mono text-slate-800">{syncStatus.connected ? 'Connecté' : 'Indisponible'}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">PostgreSQL (principal) :</span>
-                      <span className="font-mono text-slate-800">
-                        {!syncStatus.postgres.configured ? 'Non configuré' : syncStatus.postgres.connected ? 'Connecté' : 'Indisponible'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Firestore (secours) :</span>
-                      <span className="font-mono text-slate-800">
-                        {!syncStatus.firestore.configured ? 'Non configuré' : syncStatus.firestore.connected ? 'Connecté' : 'Indisponible'}
-                      </span>
-                    </div>
-                    {syncStatus.firestore.configured && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Firebase Project ID :</span>
-                          <span className="font-mono text-slate-800">{syncStatus.firestore.projectId}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Firestore Database ID :</span>
-                          <span className="font-mono text-slate-800">{syncStatus.firestore.databaseId || '(default)'}</span>
-                        </div>
-                      </>
-                    )}
                     <div className="flex justify-between">
                       <span className="text-slate-400">Heure de la vérification :</span>
                       <span className="text-slate-800">{new Date(syncStatus.timestamp).toLocaleString('fr-FR')}</span>
@@ -776,11 +702,11 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h3 className="text-sm font-bold text-slate-800 mb-2">Réinitialisation des scripts par défaut (HIM)</h3>
               <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                Si vous avez perdu vos données suite à une republish/mise à jour, ou si vous souhaitez écraser le contenu de votre base cloud Firestore/locale pour retrouver les scripts <strong>HIM d&apos;origine (Handicap International)</strong>, vous pouvez cliquer sur le bouton ci-dessous pour forcer la réinitialisation complète de la base de données.
+                Si vous avez perdu vos données suite à une republish/mise à jour, ou si vous souhaitez écraser le contenu de votre base PostgreSQL pour retrouver les scripts <strong>HIM d&apos;origine (Handicap International)</strong>, vous pouvez cliquer sur le bouton ci-dessous pour forcer la réinitialisation complète de la base de données.
               </p>
               <button
                 onClick={async () => {
-                  if (confirm("Attention: Cette action effacera toutes les modifications apportées aux campagnes, scripts et objections courants de votre base de données (Firestore et Locale) pour réinstaller les scripts HIM par défaut. Voulez-vous continuer ?")) {
+                  if (confirm("Attention: Cette action effacera toutes les modifications apportées aux campagnes, scripts et objections courants de votre base de données (PostgreSQL) pour réinstaller les scripts HIM par défaut. Voulez-vous continuer ?")) {
                     try {
                       const res = await fetch('/script/api/reset-database', { method: 'POST' });
                       const data = await res.json();

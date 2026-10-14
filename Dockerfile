@@ -10,9 +10,6 @@ COPY package.json package-lock.json .env.production ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY dist ./dist
-COPY firebase-applet-config.json ./
-# Seed/fallback store; overridden by the bind mount in docker-compose.yml.
-COPY --chown=node:node db.json ./
 
 USER node
 EXPOSE 3000

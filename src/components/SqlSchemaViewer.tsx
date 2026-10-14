@@ -58,12 +58,10 @@ export default function SqlSchemaViewer() {
       <div className="mt-6 bg-slate-800/40 border border-slate-800 rounded-lg p-4 text-xs">
         <h4 className="font-semibold text-slate-200 mb-2 flex items-center gap-1.5 font-sans">
           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-          <span>Ordre de stockage</span>
+          <span>Stockage</span>
         </h4>
         <ul className="list-disc list-inside space-y-1.5 text-slate-400 leading-relaxed">
-          <li><strong>PostgreSQL :</strong> base principale (<code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">DATABASE_URL</code> ou <code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">SQL_HOST</code>/<code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">SQL_DB_NAME</code>).</li>
-          <li><strong>Cloud Firestore :</strong> utilisé automatiquement si PostgreSQL est injoignable (compte de service requis).</li>
-          <li><strong>db.json :</strong> copie locale de chaque écriture, dernier recours si aucune base n'est disponible.</li>
+          <li><strong>PostgreSQL :</strong> seule base de données, sans repli (<code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">DATABASE_URL</code> ou <code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">SQL_HOST</code>/<code className="bg-slate-950 px-1 py-0.5 rounded text-cyan-400">SQL_DB_NAME</code>).</li>
         </ul>
       </div>
     </div>

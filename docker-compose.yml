@@ -15,9 +15,6 @@ services:
       - "3000"
     networks:
       - sy-network
-    volumes:
-      # Local fallback store (db.json) persisted on the host.
-      - ./db.json:/app/db.json
 
 
 

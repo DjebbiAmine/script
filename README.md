@@ -4,20 +4,14 @@ Intranet for call-center agents and admins: donation call scripts, objection han
 
 ## Storage
 
-The server reads and writes data in this order:
-
-1. **PostgreSQL** is the primary database. The server creates the tables on startup. If the database is empty, the server seeds it from `db.json` (or from the built-in defaults).
-2. **Cloud Firestore** takes over automatically when PostgreSQL is unreachable. It needs a Firebase service account key.
-3. **`db.json`** is a local copy of every write. The server uses it when neither database is reachable.
-
-A backend that fails is skipped for 30 s, then retried. The admin "Synchronisation & Diagnostic" tab shows which backend is active.
+**PostgreSQL** is the only database. There is no fallback: the server refuses to start when `DATABASE_URL` (or `SQL_HOST`/`SQL_DB_NAME`) is missing or the database is unreachable, and API requests fail with an error while it is down. The server creates the tables on startup and seeds an empty database with the built-in default scripts. The admin "Synchronisation & Diagnostic" tab shows the connection status.
 
 ## Run locally
 
 **Prerequisites:** Node.js 20+ and a PostgreSQL server.
 
 1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env` and set `DATABASE_URL` (plus the Firebase variables if you want the fallback).
+2. Copy `.env.example` to `.env` and set `DATABASE_URL`.
 3. Run the app: `npm run dev`
 
 For production, run `npm run build`, then `NODE_ENV=production npm start`.

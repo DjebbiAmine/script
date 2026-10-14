@@ -1,6 +1,7 @@
 import { Association, ScriptSequence } from '../types';
+import { CallCenterDB } from './types';
 
-// Default campaigns + scripts used to seed an empty database (Postgres, Firestore or db.json).
+// Default campaigns + scripts used to seed an empty database (Postgres).
 export const DEFAULT_ASSOCIATIONS: Association[] = [
   {
     id: 'him',
@@ -502,3 +503,12 @@ Sur ce Mme/Mr je vous remercie pour le moment que vous m’avez accordé, en mon
     parent_sequence_id: 'ccfd_s3'
   }
 ];
+
+export function defaultData(): CallCenterDB {
+  return {
+    associations: structuredClone(DEFAULT_ASSOCIATIONS),
+    sequences: structuredClone(DEFAULT_SEQUENCES),
+    notes: [],
+    consignes: [],
+  };
+}

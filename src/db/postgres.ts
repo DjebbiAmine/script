@@ -3,7 +3,7 @@ import { Association, ScriptSequence, AgentNote, Consigne } from '../types';
 import { CallCenterDB, DataStore, StoreCounts } from './types';
 import { SCHEMA_SQL } from './schema';
 
-// Postgres is the primary database. Configure it with DATABASE_URL, or with
+// Postgres is the only database. Configure it with DATABASE_URL, or with
 // SQL_HOST / SQL_PORT / SQL_USER / SQL_PASSWORD / SQL_DB_NAME (SQL_SSL=true for TLS).
 export function isPostgresConfigured(): boolean {
   return Boolean(process.env.DATABASE_URL || (process.env.SQL_HOST && process.env.SQL_DB_NAME));
@@ -13,7 +13,7 @@ function poolConfig(): pg.PoolConfig {
   const ssl = process.env.SQL_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
   const common: pg.PoolConfig = {
     max: 10,
-    // Fail fast so requests can fall back to Firestore instead of hanging.
+    // Fail fast so requests error out instead of hanging.
     connectionTimeoutMillis: Number(process.env.SQL_CONNECT_TIMEOUT_MS) || 5000,
     idleTimeoutMillis: 30000,
     ssl,
@@ -45,7 +45,6 @@ function toSequence(row: any): ScriptSequence {
 }
 
 export class PostgresStore implements DataStore {
-  readonly name = 'postgres' as const;
   private pool: pg.Pool;
 
   constructor() {
