@@ -446,7 +446,9 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
 
   // Handle Delete Sequence
   const handleDeleteSequence = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette séquence ?")) return;
+    const linked = sequences.filter(s => s.parent_sequence_id === id).length;
+    const warning = linked > 0 ? ` Les ${linked} objection(s) liées seront aussi supprimées.` : '';
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement cette séquence ?${warning}`)) return;
 
     try {
       const res = await fetch(`/script/api/sequences/${id}`, {
@@ -458,8 +460,9 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
       } else {
         addToast('error', 'Échec de suppression - Séquence', `Le serveur a répondu avec le statut ${res.status}.`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      addToast('error', 'Échec de suppression - Séquence', err.message || String(err));
     }
   };
 
@@ -1523,7 +1526,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                                   <Edit className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteSequence(obj.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteSequence(obj.id); }}
                                   className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded transition"
                                   title="Supprimer"
                                 >

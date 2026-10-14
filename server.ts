@@ -156,7 +156,23 @@ app.post('/script/api/sequences', async (req, res) => {
       seqObj.parent_sequence_id = String(parent_sequence_id);
     }
 
-    await db.upsertSequence(seqObj);
+    if (seqObj.type === 'script') {
+      // Insert the script at the requested position among the scripts and renumber them 1..n,
+      // so a priority that is already taken shifts the others instead of creating a tie.
+      const siblings = (await db.listSequences(seqObj.association_id))
+        .filter(s => s.type === 'script' && s.id !== seqObj.id)
+        .sort((a, b) => a.ordre - b.ordre);
+      const position = Math.min(Math.max(Math.round(seqObj.ordre) || 1, 1), siblings.length + 1);
+      siblings.splice(position - 1, 0, seqObj);
+      for (const [i, s] of siblings.entries()) {
+        if (s.ordre !== i + 1 || s.id === seqObj.id) {
+          s.ordre = i + 1;
+          await db.upsertSequence(s);
+        }
+      }
+    } else {
+      await db.upsertSequence(seqObj);
+    }
     res.json(seqObj);
   } catch (err) {
     console.error(err);

@@ -115,8 +115,17 @@ export class PostgresStore implements DataStore {
     );
   }
 
+  // Deleting a script also deletes the objections linked to it (and their consignes).
   async deleteSequence(id: string): Promise<void> {
-    await this.pool.query('DELETE FROM sequences WHERE id = $1', [id]);
+    await this.tx(async (c) => {
+      await c.query(
+        `DELETE FROM consignes WHERE sequence_id = $1
+           OR sequence_id IN (SELECT id FROM sequences WHERE parent_sequence_id = $1)`,
+        [id]
+      );
+      await c.query('DELETE FROM sequences WHERE parent_sequence_id = $1', [id]);
+      await c.query('DELETE FROM sequences WHERE id = $1', [id]);
+    });
   }
 
   async getNote(id: string): Promise<AgentNote | null> {
