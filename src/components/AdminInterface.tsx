@@ -39,6 +39,16 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   const [showAddForm, setShowAddForm] = useState(false);
   // Script selected in the left column: filters the objections column to the ones linked to it.
   const [focusedScriptId, setFocusedScriptId] = useState<string | null>(null);
+  // In-app confirmation dialog (replaces the browser's confirm()).
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const askConfirm = (title: string, message: string, confirmLabel: string, onConfirm: () => void) =>
+    setConfirmDialog({ title, message, confirmLabel, onConfirm });
+
   // Ids of the script/objection cards currently expanded (all collapsed by default).
   const [openCards, setOpenCards] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) =>
@@ -358,6 +368,38 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
     fetchAssociations();
   }, []);
 
+  // Deletes the selected association with all its scripts, steps, objections, notes and consignes.
+  const handleDeleteSelectedAssociation = () => {
+    if (!selectedAssociationId) return;
+    const name = associations.find(a => a.id === selectedAssociationId)?.nom || selectedAssociationId;
+    askConfirm(
+      "Supprimer l'association",
+      `Supprimer définitivement « ${name} » avec toutes ses étapes, objections, notes et consignes ? Cette action est irréversible.`,
+      'Tout supprimer',
+      () => deleteSelectedAssociation(selectedAssociationId)
+    );
+  };
+
+  const deleteSelectedAssociation = async (id: string) => {
+    try {
+      const res = await fetch(`/script/api/associations/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        addToast('error', 'Échec de suppression - Association', `Le serveur a répondu avec le statut ${res.status}.`);
+        return;
+      }
+      const name = associations.find(a => a.id === id)?.nom || id;
+      const next = associations.filter(a => a.id !== id);
+      setAssociations(next);
+      setSelectedAssociationId(next[0]?.id || '');
+      if (next.length === 0) setSequences([]);
+      setEditingSequence(null);
+      addToast('success', 'Association supprimée', `"${name}" et tout son contenu ont été supprimés.`);
+    } catch (err: any) {
+      console.error(err);
+      addToast('error', 'Échec de suppression - Association', err.message || String(err));
+    }
+  };
+
   // Sync sequences list when association changes
   const fetchSequences = () => {
     if (!selectedAssociationId) {
@@ -445,10 +487,19 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   };
 
   // Handle Delete Sequence
-  const handleDeleteSequence = async (id: string) => {
+  const handleDeleteSequence = (id: string) => {
+    const seq = sequences.find(s => s.id === id);
     const linked = sequences.filter(s => s.parent_sequence_id === id).length;
-    const warning = linked > 0 ? ` Les ${linked} objection(s) liées seront aussi supprimées.` : '';
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement cette séquence ?${warning}`)) return;
+    askConfirm(
+      'Supprimer la séquence',
+      `Supprimer définitivement « ${seq?.titre_sequence || id} » ?` +
+        (linked > 0 ? ` Les ${linked} objection(s) liées seront aussi supprimées.` : ''),
+      'Supprimer',
+      () => deleteSequence(id)
+    );
+  };
+
+  const deleteSequence = async (id: string) => {
 
     try {
       const res = await fetch(`/script/api/sequences/${id}`, {
@@ -725,22 +776,25 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                 Si vous avez perdu vos données suite à une republish/mise à jour, ou si vous souhaitez écraser le contenu de votre base PostgreSQL pour retrouver les scripts <strong>HIM d&apos;origine (Handicap International)</strong>, vous pouvez cliquer sur le bouton ci-dessous pour forcer la réinitialisation complète de la base de données.
               </p>
               <button
-                onClick={async () => {
-                  if (confirm("Attention: Cette action effacera toutes les modifications apportées aux campagnes, scripts et objections courants de votre base de données (PostgreSQL) pour réinstaller les scripts HIM par défaut. Voulez-vous continuer ?")) {
+                onClick={() => askConfirm(
+                  'Réinitialiser la base de données',
+                  "Cette action effacera toutes les modifications apportées aux campagnes, scripts et objections de votre base PostgreSQL pour réinstaller les scripts HIM par défaut.",
+                  'Réinitialiser',
+                  async () => {
                     try {
                       const res = await fetch('/script/api/reset-database', { method: 'POST' });
                       const data = await res.json();
                       if (res.ok) {
-                        alert(data.message);
-                        window.location.reload();
+                        addToast('success', 'Base réinitialisée', data.message);
+                        setTimeout(() => window.location.reload(), 1200);
                       } else {
-                        alert("Erreur: " + data.error);
+                        addToast('error', 'Échec de la réinitialisation', data.error);
                       }
                     } catch (e: any) {
-                      alert("Erreur de connexion : " + e.message);
+                      addToast('error', 'Échec de la réinitialisation', e.message);
                     }
                   }
-                }}
+                )}
                 className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition active:scale-95 shadow cursor-pointer uppercase tracking-wider bg-red-600 hover:bg-red-750"
               >
                 Réinstaller les scripts HIM par défaut
@@ -762,12 +816,22 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                     <span className="bg-slate-900 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-extrabold">1</span>
                     <span>ASSOCIATION DE TRAVAIL</span>
                   </h3>
-                  <button 
-                    onClick={() => setSelectedCampaignDropdown(!selectedCampaignDropdown)}
-                    className="text-[10px] font-bold text-rose-500 hover:text-rose-700 uppercase"
-                  >
-                    {selectedCampaignDropdown ? 'Fermer' : 'Choisir Autre'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setSelectedCampaignDropdown(!selectedCampaignDropdown)}
+                      className="text-[10px] font-bold text-rose-500 hover:text-rose-700 uppercase"
+                    >
+                      {selectedCampaignDropdown ? 'Fermer' : 'Choisir Autre'}
+                    </button>
+                    <button
+                      onClick={handleDeleteSelectedAssociation}
+                      disabled={!selectedAssociationId}
+                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded transition disabled:opacity-40"
+                      title="Supprimer cette association avec toutes ses étapes et objections"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Main Edit Campaign Form */}
@@ -1561,6 +1625,51 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
         )}
 
       </div>
+
+      {/* Confirmation dialog */}
+      {confirmDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4"
+          onClick={() => setConfirmDialog(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setConfirmDialog(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="bg-red-100 text-red-600 rounded-full p-2 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">{confirmDialog.title}</h3>
+                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{confirmDialog.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                autoFocus
+                onClick={() => setConfirmDialog(null)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white hover:bg-slate-50 transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => {
+                  const run = confirmDialog.onConfirm;
+                  setConfirmDialog(null);
+                  run();
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow cursor-pointer"
+              >
+                {confirmDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications Floating Panel */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-md w-full px-4 sm:px-0" id="toast-notifications-portal">
