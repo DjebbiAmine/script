@@ -37,6 +37,17 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   const [activeTab, setActiveTab] = useState<'sequences' | 'diagnostics'>('sequences');
   const [editingSequence, setEditingSequence] = useState<ScriptSequence | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  // Script selected in the left column: filters the objections column to the ones linked to it.
+  const [focusedScriptId, setFocusedScriptId] = useState<string | null>(null);
+  // Ids of the script/objection cards currently expanded (all collapsed by default).
+  const [openCards, setOpenCards] = useState<Set<string>>(new Set());
+  const toggleCard = (id: string) =>
+    setOpenCards(prev => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const editFormRef = useRef<HTMLDivElement>(null);
 
   // New Sequence form fields
   const [newTitle, setNewTitle] = useState('');
@@ -364,8 +375,14 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   };
 
   useEffect(() => {
+    setFocusedScriptId(null);
     fetchSequences();
   }, [selectedAssociationId]);
+
+  // The edit form sits above the columns: bring it into view when another sequence is picked.
+  useEffect(() => {
+    if (editingSequence) editFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [editingSequence?.id]);
 
   // Handle Create Sequence
   const handleCreateSequence = async (e: React.FormEvent) => {
@@ -1159,7 +1176,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
 
               {/* Form to Edit/Update Sequence inline */}
               {editingSequence && (
-                <div className="p-6 bg-indigo-50/70 border-b border-slate-100 rounded-xl border border-indigo-200 animate-slideDown">
+                <div ref={editFormRef} className="p-6 bg-indigo-50/70 border-b border-slate-100 rounded-xl border border-indigo-200 animate-slideDown scroll-mt-4">
                   <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-100">
                     <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
                       <Edit className="w-4 h-4 text-indigo-700" />
@@ -1376,7 +1393,13 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                       .map((seq) => (
                         <div 
                           key={seq.id}
-                          className="bg-slate-50/70 border border-slate-200/60 hover:border-slate-350 hover:bg-white rounded-xl p-4 shadow-sm relative transition-all group space-y-2.5"
+                          onClick={() => setFocusedScriptId(focusedScriptId === seq.id ? null : seq.id)}
+                          title="Cliquer pour afficher uniquement les objections liées à cette séquence"
+                          className={`border rounded-xl p-4 shadow-sm relative transition-all group space-y-2.5 cursor-pointer ${
+                            focusedScriptId === seq.id
+                              ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300'
+                              : 'bg-slate-50/70 border-slate-200/60 hover:border-slate-350 hover:bg-white'
+                          }`}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex items-center gap-2">
@@ -1392,14 +1415,21 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                             {/* Hover Actions triggers */}
                             <div className="flex gap-1">
                               <button
-                                onClick={() => setEditingSequence(seq)}
+                                onClick={(e) => { e.stopPropagation(); toggleCard(seq.id); }}
+                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition"
+                                title={openCards.has(seq.id) ? 'Réduire' : 'Développer'}
+                              >
+                                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${openCards.has(seq.id) ? 'rotate-90' : ''}`} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingSequence(seq); }}
                                 className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition"
                                 title="Modifier"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => handleDeleteSequence(seq.id)}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteSequence(seq.id); }}
                                 className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded transition"
                                 title="Supprimer"
                               >
@@ -1409,9 +1439,11 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                           </div>
 
                           {/* Real-time formatted argument render */}
-                          <div className="text-[11px] text-slate-600 bg-white border border-slate-100 p-2.5 rounded-lg leading-relaxed">
-                            {parseScriptText(seq.texte_script)}
-                          </div>
+                          {openCards.has(seq.id) && (
+                            <div className="text-[11px] text-slate-600 bg-white border border-slate-100 p-2.5 rounded-lg leading-relaxed">
+                              {parseScriptText(seq.texte_script)}
+                            </div>
+                          )}
                         </div>
                       ))}
 
@@ -1430,7 +1462,12 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                     <div className="flex items-center gap-2">
                       <span className="bg-amber-500 text-slate-950 font-black w-5 h-5 rounded flex items-center justify-center text-[10px] select-none">O</span>
                       <h4 className="font-extrabold text-xs text-slate-100 tracking-wide">
-                        GUIDE DES OBJECTIONS ({sequences.filter(s => s.type === 'objection').length})
+                        GUIDE DES OBJECTIONS ({sequences.filter(s => s.type === 'objection' && (!focusedScriptId || s.parent_sequence_id === focusedScriptId || !s.parent_sequence_id)).length})
+                        {focusedScriptId && (
+                          <button onClick={() => setFocusedScriptId(null)} className="ml-2 text-[9px] font-bold text-amber-400 underline cursor-pointer">
+                            Tout afficher
+                          </button>
+                        )}
                       </h4>
                     </div>
                     <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider">
@@ -1442,6 +1479,7 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                   <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[600px] min-h-[300px]">
                     {sequences
                       .filter(s => s.type === 'objection')
+                      .filter(s => !focusedScriptId || s.parent_sequence_id === focusedScriptId || !s.parent_sequence_id)
                       .sort((a,b) => a.ordre - b.ordre)
                       .map((obj) => {
                         const parentSeq = sequences.find(s => s.id === obj.parent_sequence_id);
@@ -1471,6 +1509,13 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                               {/* Hover Actions triggers */}
                               <div className="flex gap-1 shrink-0">
                                 <button
+                                onClick={(e) => { e.stopPropagation(); toggleCard(obj.id); }}
+                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition"
+                                title={openCards.has(obj.id) ? 'Réduire' : 'Développer'}
+                              >
+                                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${openCards.has(obj.id) ? 'rotate-90' : ''}`} />
+                              </button>
+                              <button
                                   onClick={() => setEditingSequence(obj)}
                                   className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition"
                                   title="Modifier"
@@ -1488,9 +1533,11 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
                             </div>
 
                             {/* Real-time formatted argument render */}
-                            <div className="text-[11px] text-slate-600 bg-white border border-slate-100 p-2.5 rounded-lg leading-relaxed mt-1">
-                              {parseScriptText(obj.texte_script)}
-                            </div>
+                            {openCards.has(obj.id) && (
+                              <div className="text-[11px] text-slate-600 bg-white border border-slate-100 p-2.5 rounded-lg leading-relaxed mt-1">
+                                {parseScriptText(obj.texte_script)}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
