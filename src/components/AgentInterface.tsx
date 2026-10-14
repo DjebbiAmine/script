@@ -76,7 +76,7 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
     if (!('documentPictureInPicture' in window)) {
       alert("Votre navigateur ne supporte pas encore le mode Document Picture-in-Picture (requis pour le Toujours au Premier Plan). Utilisez Google Chrome ou Microsoft Edge pour en profiter ! En attendant, la fenêtre flottante classique s'ouvrira.");
       window.open(
-        window.location.origin + '?mini=true',
+        window.location.origin + '/script/?mini=true',
         'SynergyMini',
         'width=420,height=760,status=no,menubar=no,toolbar=no,location=no,resizable=yes'
       );
@@ -143,7 +143,7 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
       console.error("Failed to start Picture-in-Picture window:", err);
       // Fallback
       window.open(
-        window.location.origin + '?mini=true',
+        window.location.origin + '/script/?mini=true',
         'SynergyMini',
         'width=420,height=760,status=no,menubar=no,toolbar=no,location=no,resizable=yes'
       );
@@ -591,7 +591,7 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
           <button
             onClick={() => {
               window.open(
-                window.location.origin + '?mini=true',
+                window.location.origin + '/script/?mini=true',
                 'SynergyMini',
                 'width=420,height=760,status=no,menubar=no,toolbar=no,location=no,resizable=yes'
               );
