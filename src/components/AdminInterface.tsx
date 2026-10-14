@@ -7,6 +7,7 @@ import {
   Flame, AlertTriangle, Save, RefreshCw, Wifi, WifiOff, Server
 } from 'lucide-react';
 import SqlSchemaViewer from './SqlSchemaViewer';
+import { useLiveUpdates } from '../lib/useLiveUpdates';
 
 interface AdminInterfaceProps {
   username: string;
@@ -367,6 +368,12 @@ export default function AdminInterface({ username, onLogout }: AdminInterfacePro
   useEffect(() => {
     fetchAssociations();
   }, []);
+
+  // Keep the lists in sync when another admin edits the data.
+  useLiveUpdates(() => {
+    fetchAssociations();
+    fetchSequences();
+  });
 
   // Deletes the selected association with all its scripts, steps, objections, notes and consignes.
   const handleDeleteSelectedAssociation = () => {

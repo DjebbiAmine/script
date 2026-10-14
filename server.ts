@@ -15,6 +15,38 @@ process.on('unhandledRejection', (reason) => {
   console.error('⚠️  [SERVER] Promesse rejetée non gérée :', reason);
 });
 
+// Live updates over Server-Sent Events (served at /script/wss). Every successful write on the
+// API notifies the connected screens, which then refetch their data.
+const sseClients = new Set<express.Response>();
+
+app.get('/script/wss', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // keep nginx from buffering the stream
+  });
+  res.flushHeaders();
+  res.write('retry: 3000\n\n');
+  sseClients.add(res);
+  req.on('close', () => sseClients.delete(res));
+});
+
+// Comment lines keep idle connections open through proxies.
+setInterval(() => {
+  for (const client of sseClients) client.write(': ping\n\n');
+}, 25_000).unref();
+
+app.use('/script/api', (req, res, next) => {
+  if (req.method !== 'GET' && !req.path.startsWith('/notes')) {
+    res.on('finish', () => {
+      if (res.statusCode >= 400) return;
+      for (const client of sseClients) client.write('event: change\ndata: {}\n\n');
+    });
+  }
+  next();
+});
+
 // API Router
 // Login check
 app.post('/script/api/login', (req, res) => {

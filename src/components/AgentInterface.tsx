@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLiveUpdates } from '../lib/useLiveUpdates';
 import { Association, ScriptSequence, Consigne } from '../types';
 import { 
   X, Save, FileText, Headphones, LogOut, 
@@ -174,6 +175,24 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
     loadSequences();
     loadNote();
   }, [selectedAssociationId, username]);
+
+  // Pick up admin edits without a reload, keeping the current step and objection when they still exist.
+  useLiveUpdates(() => {
+    fetch('/script/api/associations')
+      .then(res => res.json())
+      .then(setAssociations)
+      .catch(err => console.error("Error refreshing associations", err));
+    if (!selectedAssociationId) return;
+    fetch(`/script/api/sequences?association_id=${selectedAssociationId}`)
+      .then(res => res.json())
+      .then((data: ScriptSequence[]) => {
+        setSequences(data);
+        const scripts = data.filter(s => s.type === 'script');
+        setActiveSequence(prev => data.find(s => s.id === prev?.id) ?? scripts[0] ?? null);
+        setActiveObjection(prev => data.find(s => s.id === prev?.id) ?? null);
+      })
+      .catch(err => console.error("Error refreshing sequences", err));
+  });
 
   // Handle Note Save manually
   const handleSaveNote = async () => {
