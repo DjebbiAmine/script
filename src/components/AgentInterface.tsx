@@ -658,6 +658,36 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
                 </h2>
               </div>
             </div>
+
+            {/* Step navigation */}
+            {mainScripts.length > 0 && activeSequence && (() => {
+              const currIdx = mainScripts.findIndex(s => s.id === activeSequence.id);
+              const goTo = (idx: number) => {
+                setActiveSequence(mainScripts[idx]);
+                setActiveObjection(null); // Clear active objection on step change
+              };
+              return (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    disabled={currIdx <= 0}
+                    onClick={() => goTo(currIdx - 1)}
+                    className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 text-slate-100 py-1 px-3 text-[11px] font-bold rounded-lg transition cursor-pointer"
+                  >
+                    Précédent
+                  </button>
+                  <span className="text-[10px] text-slate-400 font-mono font-semibold whitespace-nowrap">
+                    {currIdx + 1} / {mainScripts.length}
+                  </span>
+                  <button
+                    disabled={currIdx >= mainScripts.length - 1}
+                    onClick={() => goTo(currIdx + 1)}
+                    className="bg-teal-500 hover:bg-teal-400 text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed py-1 px-3 text-[11px] font-bold rounded-lg transition cursor-pointer"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Main Script Text Content Area: HYPER OPTIMIZED UX */}
@@ -675,43 +705,6 @@ export default function AgentInterface({ username, onLogout }: AgentInterfacePro
               </div>
             )}
           </div>
-
-          {/* Footer Navigation within Active Script */}
-          {mainScripts.length > 0 && (
-            <div className="bg-slate-50 px-5 py-3.5 border-t border-slate-150 flex justify-between items-center shrink-0">
-              <button
-                disabled={mainScripts.indexOf(activeSequence!) === 0}
-                onClick={() => {
-                  const currIdx = mainScripts.indexOf(activeSequence!);
-                  if (currIdx > 0) {
-                    setActiveSequence(mainScripts[currIdx - 1]);
-                    setActiveObjection(null); // Clear active objection on step change
-                  }
-                }}
-                className="bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 text-slate-700 py-1.5 px-3.5 text-xs font-bold rounded-lg transition shrink-0 cursor-pointer"
-              >
-                Précédent
-              </button>
-
-              <span className="text-xs text-slate-500 font-mono font-semibold">
-                Étape {mainScripts.indexOf(activeSequence!) + 1} sur {mainScripts.length}
-              </span>
-
-              <button
-                disabled={mainScripts.indexOf(activeSequence!) === mainScripts.length - 1}
-                onClick={() => {
-                  const currIdx = mainScripts.indexOf(activeSequence!);
-                  if (currIdx < mainScripts.length - 1) {
-                    setActiveSequence(mainScripts[currIdx + 1]);
-                    setActiveObjection(null); // Clear active objection on step change
-                  }
-                }}
-                className="bg-slate-900 hover:bg-slate-800 text-white disabled:opacity-40 py-1.5 px-3.5 text-xs font-bold rounded-lg transition shrink-0 cursor-pointer"
-              >
-                Suivant
-              </button>
-            </div>
-          )}
         </main>
 
         {/* COLUMN B: [O] Guide des Objections d'Appel + Bloc-Notes */}
