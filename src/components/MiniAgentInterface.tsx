@@ -402,50 +402,45 @@ export default function MiniAgentInterface({ username, onLogout, isPip = false, 
           <div className="space-y-4 animate-fadeIn">
             {activeSequence ? (
               <div className="bg-white text-slate-900 rounded-xl p-4 border border-slate-200 shadow-xl">
-                {/* Active step tag */}
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <span className="bg-teal-500 font-black text-slate-950 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide">
-                    Étape {mainScripts.indexOf(activeSequence) + 1}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-bold truncate">
-                    {activeSequence.titre_sequence}
-                  </span>
-                </div>
+                {/* Step navigation + active step tag */}
+                {(() => {
+                  const idx = mainScripts.findIndex(s => s.id === activeSequence.id);
+                  return (
+                    <div className="mb-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          disabled={idx <= 0}
+                          onClick={() => setActiveSequence(mainScripts[idx - 1])}
+                          className="px-3 py-1.5 bg-white border border-slate-250 hover:bg-slate-50 disabled:opacity-30 rounded-lg text-xs font-bold text-slate-700 transition"
+                        >
+                          Précédent
+                        </button>
+                        <span className="text-[10px] font-mono font-bold text-slate-400">
+                          {idx + 1} / {mainScripts.length}
+                        </span>
+                        <button
+                          disabled={idx >= mainScripts.length - 1}
+                          onClick={() => setActiveSequence(mainScripts[idx + 1])}
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 rounded-lg text-xs font-bold text-white transition"
+                        >
+                          Suivant
+                        </button>
+                      </div>
+                      <div className="flex items-start gap-1.5">
+                        <span className="bg-teal-500 font-black text-slate-950 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide shrink-0">
+                          Étape {idx + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold break-words">
+                          {activeSequence.titre_sequence}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Script Body Text in Compact Mode */}
                 <div className="leading-relaxed bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
                   {parseScriptText(activeSequence.texte_script)}
-                </div>
-
-
-
-                {/* Step Toggle Controls */}
-                <div className="mt-4 pt-3.5 border-t border-slate-150 flex items-center justify-between">
-                  <button
-                    disabled={mainScripts.indexOf(activeSequence) === 0}
-                    onClick={() => {
-                      const idx = mainScripts.indexOf(activeSequence);
-                      if (idx > 0) setActiveSequence(mainScripts[idx - 1]);
-                    }}
-                    className="px-3 py-1.5 bg-white border border-slate-250 hover:bg-slate-50 disabled:opacity-30 rounded-lg text-xs font-bold text-slate-700 transition"
-                  >
-                    Précédent
-                  </button>
-
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    {mainScripts.indexOf(activeSequence) + 1} / {mainScripts.length}
-                  </span>
-
-                  <button
-                    disabled={mainScripts.indexOf(activeSequence) === mainScripts.length - 1}
-                    onClick={() => {
-                      const idx = mainScripts.indexOf(activeSequence);
-                      if (idx < mainScripts.length - 1) setActiveSequence(mainScripts[idx + 1]);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 rounded-lg text-xs font-bold text-white transition"
-                  >
-                    Suivant
-                  </button>
                 </div>
               </div>
             ) : (
