@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLiveUpdates } from '../lib/useLiveUpdates';
 import { Association, ScriptSequence, Consigne } from '../types';
 import { 
   X, Save, FileText, Headphones, LogOut, 
@@ -10,9 +11,11 @@ interface MiniAgentInterfaceProps {
   username: string;
   onLogout: () => void;
   isPip?: boolean;
+  // Rendered inside the normal page on narrow screens (side panel, tablet, phone) instead of a popup.
+  embedded?: boolean;
 }
 
-export default function MiniAgentInterface({ username, onLogout, isPip = false }: MiniAgentInterfaceProps) {
+export default function MiniAgentInterface({ username, onLogout, isPip = false, embedded = false }: MiniAgentInterfaceProps) {
   const [associations, setAssociations] = useState<Association[]>([]);
   const [selectedAssociationId, setSelectedAssociationId] = useState<string>(() => {
     return localStorage.getItem('synergy_selected_assoc_id') || '';
@@ -27,7 +30,7 @@ export default function MiniAgentInterface({ username, onLogout, isPip = false }
 
   // Focus retention trick to keep non-PiP popup on top
   useEffect(() => {
-    if (isPip) return;
+    if (isPip || embedded) return;
 
     const handleBlur = () => {
       setTimeout(() => {
@@ -51,7 +54,7 @@ export default function MiniAgentInterface({ username, onLogout, isPip = false }
       window.removeEventListener('blur', handleBlur);
       clearInterval(focusInterval);
     };
-  }, [isPip]);
+  }, [isPip, embedded]);
 
   // Load all associations on mount
   useEffect(() => {
@@ -108,6 +111,24 @@ export default function MiniAgentInterface({ username, onLogout, isPip = false }
       .catch(err => console.error("Error loading notes", err));
 
   }, [selectedAssociationId, username]);
+
+  // Pick up admin edits without a reload, keeping the current step and objection when they still exist.
+  useLiveUpdates(() => {
+    fetch('/script/api/associations')
+      .then(res => res.json())
+      .then(setAssociations)
+      .catch(err => console.error("Error refreshing associations", err));
+    if (!selectedAssociationId) return;
+    fetch(`/script/api/sequences?association_id=${selectedAssociationId}`)
+      .then(res => res.json())
+      .then((data: ScriptSequence[]) => {
+        setSequences(data);
+        const scripts = data.filter(s => s.type === 'script');
+        setActiveSequence(prev => data.find(s => s.id === prev?.id) ?? scripts[0] ?? null);
+        setActiveObjection(prev => data.find(s => s.id === prev?.id) ?? null);
+      })
+      .catch(err => console.error("Error refreshing sequences", err));
+  });
 
   // Notes Auto-save setup
   useEffect(() => {
@@ -291,21 +312,33 @@ export default function MiniAgentInterface({ username, onLogout, isPip = false }
         <div className="flex items-center gap-1.5 min-w-0">
           <Headphones className="w-4 h-4 text-teal-400 shrink-0" />
           <span className="text-[11px] font-bold tracking-tight text-white uppercase truncate">
-            Synergy Mini-Compagnon
+            {embedded ? `Synergy • ${username}` : 'Synergy Mini-Compagnon'}
           </span>
-          <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase tracking-wider ${isPip ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 animate-pulse'}`}>
-            {isPip ? '📌 Épinglé 1er plan' : '⚡ Toujours Visible'}
-          </span>
+          {!embedded && (
+            <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase tracking-wider ${isPip ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 animate-pulse'}`}>
+              {isPip ? '📌 Épinglé 1er plan' : '⚡ Toujours Visible'}
+            </span>
+          )}
         </div>
 
-        {/* Quit Popup Button */}
-        <button
-          onClick={() => window.close()}
-          className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded transition"
-          title="Fermer la mini-fenêtre"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {embedded ? (
+          <button
+            onClick={onLogout}
+            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded transition"
+            title="Quitter"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        ) : (
+          /* Quit Popup Button */
+          <button
+            onClick={() => window.close()}
+            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded transition"
+            title="Fermer la mini-fenêtre"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </header>
 
       {/* Selector and Tab Controller Panel */}

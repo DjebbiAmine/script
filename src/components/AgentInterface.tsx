@@ -13,13 +13,30 @@ interface AgentInterfaceProps {
   onLogout: () => void;
 }
 
+// Below this width (side panel, tablet, phone) the agent gets the compact floating-mode layout.
+const COMPACT_QUERY = '(max-width: 1023px)';
+
+function useIsCompact(): boolean {
+  const [compact, setCompact] = useState(() => window.matchMedia(COMPACT_QUERY).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(COMPACT_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setCompact(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return compact;
+}
+
 export default function AgentInterface({ username, onLogout }: AgentInterfaceProps) {
   const isMiniMode = window.location.search.includes('mini=true');
+  const compact = useIsCompact();
 
-  if (isMiniMode) {
-    return <MiniAgentInterface username={username} onLogout={onLogout} />;
-  }
+  if (isMiniMode) return <MiniAgentInterface username={username} onLogout={onLogout} />;
+  if (compact) return <MiniAgentInterface username={username} onLogout={onLogout} embedded />;
+  return <AgentDesktopInterface username={username} onLogout={onLogout} />;
+}
 
+function AgentDesktopInterface({ username, onLogout }: AgentInterfaceProps) {
   const [associations, setAssociations] = useState<Association[]>([]);
   const [selectedAssociationId, setSelectedAssociationId] = useState<string>(() => {
     return localStorage.getItem('synergy_selected_assoc_id') || '';
